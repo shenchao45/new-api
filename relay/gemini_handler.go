@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -163,6 +164,7 @@ func GeminiHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 		}
 
 		logger.LogDebug(c, "Gemini request body: %s", jsonData)
+		info.UpstreamRequest = string(jsonData)
 
 		body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
 		if err != nil {
@@ -194,7 +196,13 @@ func GeminiHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 		}
 	}
 
-	usage, openaiErr := adaptor.DoResponse(c, resp.(*http.Response), info)
+	var respBuf bytes.Buffer
+	if httpResp != nil {
+		httpResp.Body = io.NopCloser(io.TeeReader(httpResp.Body, &respBuf))
+	}
+
+	usage, openaiErr := adaptor.DoResponse(c, httpResp, info)
+	info.UpstreamResponse = respBuf.String()
 	if openaiErr != nil {
 		service.ResetStatusCode(openaiErr, statusCodeMappingStr)
 		return openaiErr
@@ -269,6 +277,7 @@ func GeminiEmbeddingHandler(c *gin.Context, info *relaycommon.RelayInfo) (newAPI
 		}
 	}
 	logger.LogDebug(c, "Gemini embedding request body: %s", jsonData)
+	info.UpstreamRequest = string(jsonData)
 	body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
@@ -295,7 +304,13 @@ func GeminiEmbeddingHandler(c *gin.Context, info *relaycommon.RelayInfo) (newAPI
 		}
 	}
 
-	usage, openaiErr := adaptor.DoResponse(c, resp.(*http.Response), info)
+	var respBuf2 bytes.Buffer
+	if httpResp != nil {
+		httpResp.Body = io.NopCloser(io.TeeReader(httpResp.Body, &respBuf2))
+	}
+
+	usage, openaiErr := adaptor.DoResponse(c, httpResp, info)
+	info.UpstreamResponse = respBuf2.String()
 	if openaiErr != nil {
 		service.ResetStatusCode(openaiErr, statusCodeMappingStr)
 		return openaiErr

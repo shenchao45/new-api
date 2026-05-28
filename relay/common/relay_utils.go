@@ -222,3 +222,20 @@ func ValidateBasicTaskRequest(c *gin.Context, info *RelayInfo, action string) *d
 	storeTaskRequest(c, info, action, req)
 	return nil
 }
+
+// CapturedWriter is implemented by a ResponseWriter wrapper that records
+// bytes sent to the client. Defined here (relay/common) so that service
+// packages can call GetClientResponse without importing the relay package
+// and causing an import cycle.
+type CapturedWriter interface {
+	Captured() string
+}
+
+// GetClientResponse returns the bytes captured by a CapturedWriter wrapper
+// installed on c.Writer, or "" if no such wrapper is present.
+func GetClientResponse(c *gin.Context) string {
+	if cw, ok := c.Writer.(CapturedWriter); ok {
+		return cw.Captured()
+	}
+	return ""
+}

@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -175,6 +176,8 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 
 		logger.LogDebug(c, "text request body: %s", jsonData)
 
+		info.UpstreamRequest = string(jsonData)
+
 		body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
@@ -204,7 +207,13 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		}
 	}
 
+	var respBuf bytes.Buffer
+	if httpResp != nil {
+		httpResp.Body = io.NopCloser(io.TeeReader(httpResp.Body, &respBuf))
+	}
+
 	usage, newApiErr := adaptor.DoResponse(c, httpResp, info)
+	info.UpstreamResponse = respBuf.String()
 	if newApiErr != nil {
 		// reset status code 重置状态码
 		service.ResetStatusCode(newApiErr, statusCodeMappingStr)

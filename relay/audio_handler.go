@@ -1,8 +1,10 @@
 package relay
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
@@ -61,7 +63,13 @@ func AudioHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 		}
 	}
 
+	var respBuf bytes.Buffer
+	if httpResp != nil {
+		httpResp.Body = io.NopCloser(io.TeeReader(httpResp.Body, &respBuf))
+	}
+
 	usage, newAPIError := adaptor.DoResponse(c, httpResp, info)
+	info.UpstreamResponse = respBuf.String()
 	if newAPIError != nil {
 		// reset status code 重置状态码
 		service.ResetStatusCode(newAPIError, statusCodeMappingStr)

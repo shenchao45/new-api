@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -58,6 +59,7 @@ func EmbeddingHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 	}
 
 	logger.LogDebug(c, "converted embedding request body: %s", jsonData)
+	info.UpstreamRequest = string(jsonData)
 	body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
@@ -83,7 +85,13 @@ func EmbeddingHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 		}
 	}
 
+	var respBuf bytes.Buffer
+	if httpResp != nil {
+		httpResp.Body = io.NopCloser(io.TeeReader(httpResp.Body, &respBuf))
+	}
+
 	usage, newAPIError := adaptor.DoResponse(c, httpResp, info)
+	info.UpstreamResponse = respBuf.String()
 	if newAPIError != nil {
 		// reset status code 重置状态码
 		service.ResetStatusCode(newAPIError, statusCodeMappingStr)

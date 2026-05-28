@@ -161,6 +161,17 @@ type RelayInfo struct {
 	// *bytes.Reader/Buffer/strings.Reader). 0 means "let net/http decide".
 	UpstreamRequestBodySize int64
 
+	// UpstreamRequest is the actual request body JSON sent to the upstream channel.
+	UpstreamRequest string
+	// UpstreamResponse is the full response body received from the upstream channel
+	// (SSE chunks are concatenated for streaming responses).
+	UpstreamResponse string
+
+	// ClientRequest is the raw request body received from the external client.
+	ClientRequest string
+	// ClientResponse is the full response body sent back to the external client.
+	ClientResponse string
+
 	PriceData types.PriceData
 
 	// TieredBillingSnapshot is a frozen snapshot of tiered billing rules

@@ -187,6 +187,16 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
+	// capture client request body once (BodyStorage is already buffered)
+	if bodyStorage, bsErr := common.GetBodyStorage(c); bsErr == nil {
+		if rawBytes, bErr := bodyStorage.Bytes(); bErr == nil {
+			relayInfo.ClientRequest = string(rawBytes)
+		}
+	}
+	// wrap c.Writer to capture the response sent back to the client
+	recorder := relay.NewResponseBodyRecorder(c.Writer)
+	c.Writer = recorder
+
 	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
 		relayInfo.RetryIndex = retryParam.GetRetry()
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
